@@ -9,33 +9,94 @@ def test_index(client):
 
 
 def test_mirror(client):
-    res = client.get("/mirror/Tim")
+    res = client.get("/mirror/Tim/")
     assert res.status_code == 200
     assert res.json["result"]["name"] == "Tim"
 
 
 def test_get_users(client):
-    res = client.get("/users")
+    res = client.get("/users/")
     assert res.status_code == 200
-
     res_users = res.json["result"]["users"]
     assert len(res_users) == 4
     assert res_users[0]["name"] == "Aria"
 
 
 def tests_get_users_with_team(client):
-    res = client.get("/users?team=LWB")
+    res = client.get("/users/?team=LWB")
     assert res.status_code == 200
-
     res_users = res.json["result"]["users"]
     assert len(res_users) == 2
     assert res_users[1]["name"] == "Tim"
 
 
 def test_get_user_id(client):
-    res = client.get("/users/1")
+    res = client.get("/users/1/")
     assert res.status_code == 200
-
     res_user = res.json["result"]["user"]
     assert res_user["name"] == "Aria"
     assert res_user["age"] == 19
+
+
+def test_create_user(client):
+    res = client.post("/users/", data={"name": "Andrew", "age": 30, "team": "Liverpool"})
+    assert res.status_code == 201
+    res_user = res.json["result"]["new user"]
+    assert res_user["name"] == "Andrew"
+    assert res_user["age"] == 30
+    assert res_user["team"] == "Liverpool"
+    id = res_user["id"]
+
+    res = client.get(f"/users/{id}/")
+    assert res.status_code == 200
+    res_user = res.json["result"]["user"]
+    assert res_user["name"] == "Andrew"
+    assert res_user["age"] == 30
+    assert res_user["team"] == "Liverpool"
+
+    res = client.post("/users/", data={"name": "Andrew", "age": 30})
+    assert res.status_code == 422
+
+    res = client.post("/users/", data={"name": "Andrew", "age": "", "team": "Liverpool"})
+    assert res.status_code == 422
+
+    res = client.post("/users/", data={"name": "Andrew", "age": "a", "team": "Liverpool"})
+    assert res.status_code == 422
+
+
+def test_update_user(client):
+    res = client.put("/users/1000/", data={"age": 25, "name": ""})
+    assert res.status_code == 404
+
+    res = client.put("/users/1/", data={"age": 25, "name": ""})
+    res_user = res.json["result"]["user"]
+    assert res_user["age"] == 25
+    assert res_user["name"] == "Aria"
+    assert res_user["team"] == "LWB"
+
+    res = client.get(f"/users/1/")
+    assert res.status_code == 200
+    res_user = res.json["result"]["user"]
+    assert res_user["age"] == 25
+    assert res_user["name"] == "Aria"
+    assert res_user["team"] == "LWB"
+
+    res = client.put("/users/1/", data={"age": "", "name": "Sam"})
+    assert res.status_code == 200
+    res_user = res.json["result"]["user"]
+    assert res_user["age"] == 25
+    assert res_user["name"] == "Sam"
+    assert res_user["team"] == "LWB"
+
+    res = client.put("/users/1/", data={"age": "ff", "name": "Daniel"})
+    assert res.status_code == 422
+
+
+def test_delete_user(client):
+    res = client.delete("/users/1000/")
+    assert res.status_code == 404
+
+    res = client.delete("/users/1/")
+    assert res.status_code == 200
+    res = client.get(f"/users/1/")
+    assert res.status_code == 404
